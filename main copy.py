@@ -27,16 +27,16 @@ batch_input_recursive: bool
 batch_output_dir: str
 batch_output_filename_format: str
 
-# batch_input_glob = r"E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images"
-batch_input_glob = r"E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLT4C8B.info\1594047078060.jpg E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLAP6UB.info\tb_image_share_1594047317053.jpg E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KIMT6M81GAYYH.info\005O0CJZly1gl7bm0ib57j30u01bwe81.png,,"
+batch_input_glob = r"E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images"
+# batch_input_glob = r"E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLT4C8B.info\1594047078060.jpg E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLAP6UB.info\tb_image_share_1594047317053.jpg E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KIMT6M81GAYYH.info\005O0CJZly1gl7bm0ib57j30u01bwe81.png,,"
 
 batch_output_dir =""
 batch_input_glob = batch_input_glob.strip()
 batch_output_dir = batch_output_dir.strip()
 # batch_output_filename_format = batch_output_filename_format.strip()
 
-batch_input_recursive = False
-# batch_input_recursive = True
+# batch_input_recursive = False
+batch_input_recursive = True
 
 if batch_input_glob != '':
     # if there is no glob pattern, insert it automatically
@@ -65,14 +65,15 @@ if batch_input_glob != '':
     
     # Handle paths based on the new approach if batch_input_glob ends with \n
     if batch_input_glob.endswith(',,\*'):
-        base_dir = re.search(r'([a-zA-Z]:\\.*?\s)[a-zA-Z]:\\', batch_input_glob)
-        base_dir = base_dir.group(1)
+        # base_dir = re.search(r'([a-zA-Z]:\\.*?\s)[a-zA-Z]:\\', batch_input_glob)
+        # base_dir = base_dir.group(1)
 
-        print("调试信息base_dir：", base_dir)
+        # print("调试信息base_dir：", base_dir)
 
-        batch_input_glob = batch_input_glob.replace(',,\*', ',,')
-        batch_input_glob = re.sub(r'\s([a-zA-Z]:\\)', r',,\1', batch_input_glob)
-        paths = [Path(p) for p in re.findall(r'([a-zA-Z]:\\.*?),,', batch_input_glob)]
+        # batch_input_glob = batch_input_glob.replace(',,\*', ',,')
+        # batch_input_glob = re.sub(r'\s([a-zA-Z]:\\)', r',,\1', batch_input_glob)
+        # paths = [Path(p) for p in re.findall(r'([a-zA-Z]:\\.*?),,', batch_input_glob)]
+        pass
     else:
         
         if not os.path.isdir(base_dir):

@@ -271,7 +271,6 @@ def on_interrogate(
         escape_tag
     )
 
-    # batch process
     batch_input_glob = batch_input_glob.strip()
     batch_output_dir = batch_output_dir.strip()
     batch_output_filename_format = batch_output_filename_format.strip()
@@ -291,24 +290,36 @@ def on_interrogate(
         base_dir = base_dir.split(os.sep + '*').pop(0)
 
         # check the input directory path
-        if not os.path.isdir(base_dir):
-            print('input path is not a directory / 输入的路径不是文件夹，终止识别')
-            return 'input path is not a directory'
+    
 
-        # this line is moved here because some reason
         # PIL.Image.registered_extensions() returns only PNG if you call too early
         supported_extensions = [
             e
             for e, f in Image.registered_extensions().items()
             if f in Image.OPEN
         ]
+        # Handle paths based on the new approach if batch_input_glob ends with \n
+        if batch_input_glob.endswith(',,\*'):
+            
+            base_dir = re.search(r'([a-zA-Z]:/.*?\s)[a-zA-Z]:/', batch_input_glob)
+            base_dir = base_dir.group(1)
+            print("调试信息base_dir：", base_dir)
 
-        paths = [
-            Path(p)
-            for p in glob(batch_input_glob, recursive=batch_input_recursive)
-            if '.' + p.split('.').pop().lower() in supported_extensions
-            and not p.rsplit('.', 1)[0].endswith('_thumbnail')
-        ]
+            batch_input_glob = batch_input_glob.replace(',,\*', ',,')
+            batch_input_glob = re.sub(r'\s([a-zA-Z]:/)', r',,\1', batch_input_glob)
+            paths = [Path(p) for p in re.findall(r'([a-zA-Z]:/.*?),,', batch_input_glob)]
+        else:
+            
+            if not os.path.isdir(base_dir):
+                print('input path is not a directory / 输入的路径不是文件夹，终止识别')
+                return 'input path is not a directory'
+            
+            paths = [
+                Path(p)
+                for p in glob(batch_input_glob, recursive=batch_input_recursive)
+                if '.' + p.split('.').pop().lower() in supported_extensions
+                and not p.rsplit('.', 1)[0].endswith('_thumbnail')
+            ]
 
         print(f'found {len(paths)} image(s)')
 
@@ -323,15 +334,18 @@ def on_interrogate(
             # guess the output path
             base_dir_last = Path(base_dir).parts[-1]
             base_dir_last_idx = path.parts.index(base_dir_last)
-            output_dir = Path(
-                batch_output_dir) if batch_output_dir else Path(base_dir)
-            output_dir = output_dir.joinpath(
-                *path.parts[base_dir_last_idx + 1:]).parent
-
+            output_dir = Path(batch_output_dir) if batch_output_dir else Path(base_dir)
+            output_dir = output_dir.joinpath(*path.parts[base_dir_last_idx + 1:]).parent
             output_dir.mkdir(0o777, True, True)
+            
+            print("调试信息base_dir：", base_dir)
+            print("调试信息base_dir_last_idx：", base_dir_last_idx)
+            print("调试信息base_dir_last：", base_dir_last)
+            print("调试信息output_dir：", output_dir)
 
             # format output filename
             format_info = format.Info(path, 'txt')
+            print("调试信息format_info：", format_info)
 
             try:
                 formatted_output_filename = format.pattern.sub(
@@ -341,9 +355,7 @@ def on_interrogate(
             except (TypeError, ValueError) as error:
                 return str(error)
 
-            output_path = output_dir.joinpath(
-                formatted_output_filename
-            )
+            output_path = output_dir.joinpath(formatted_output_filename)
 
             output = []
 
@@ -355,15 +367,10 @@ def on_interrogate(
                     continue
 
             ratings, tags = interrogator.interrogate(image)
-            processed_tags = Interrogator.postprocess_tags(
-                tags,
-                *postprocess_opts
-            )
+            processed_tags = Interrogator.postprocess_tags(tags, *postprocess_opts)
 
             # TODO: switch for less print
-            print(
-                f'found {len(processed_tags)} tags out of {len(tags)} from {path}'
-            )
+            print(f'found {len(processed_tags)} tags out of {len(tags)} from {path}')
 
             plain_tags = ', '.join(processed_tags)
 
@@ -377,9 +384,7 @@ def on_interrogate(
             if batch_remove_duplicated_tag:
                 output_path.write_text(
                     ', '.join(
-                        OrderedDict.fromkeys(
-                            map(str.strip, ','.join(output).split(','))
-                        )
+                        OrderedDict.fromkeys(map(str.strip, ','.join(output).split(',')))
                     ),
                     encoding='utf-8'
                 )
@@ -395,6 +400,16 @@ def on_interrogate(
                 )
 
         print('all done / 识别完成')
+
+        # print("调试信息batch_input_glob：", batch_input_glob)
+        # print("调试信息paths：", paths)
+        # print("调试信息batch_input_recursive：", batch_input_recursive)
+        # print("调试信息batch_input_recursive：", batch_input_recursive)
+        # print("调试信息batch_output_dir：", batch_output_dir)
+        # print("调试信息batch_output_filename_format：", batch_output_filename_format)
+        # print("调试信息batch_output_action_on_conflict：", batch_output_action_on_conflict)
+        # print("调试信息batch_remove_duplicated_tag：", batch_remove_duplicated_tag)
+        # print("调试信息batch_output_save_json：", batch_output_save_json)
 
     if unload_model_after_running:
         interrogator.unload()
