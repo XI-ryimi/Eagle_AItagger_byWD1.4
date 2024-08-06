@@ -136,8 +136,9 @@ if YorN("是否对tags进行汉化？(Y/N): "):
                 sys.exit(0)
 
 # EN_tags to CN_tags
-
 # tag写入json
+# 处理进度条
+# 异常文件报错
 
 '''
 #txt文件夹路径
