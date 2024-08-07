@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import csv
 from pathlib import Path
 
 
@@ -127,15 +128,63 @@ if YorN("是否对tags进行汉化？(Y/N): "):
     # 检查工作环境
     script_dir = os.path.dirname(os.path.abspath(__file__)) # 当前脚本所在目录
     TransDic_path = os.path.join(script_dir, 'Tags-zh.csv') # 翻译字典文件路径
-    while True:
-        if not os.path.exists(TransDic_path):
-            print("字典文件不存在或被重命名，恢复字典文件或退出。")
-            print("-"*50)
-            user_input = input("如果已经恢复字典文件，请按任意键继续；如果要退出程序，请输入 'e'")
-            if user_input.lower() == 'e':
-                sys.exit(0)
+    TransDic_data = {}
+    try:
+        with open(TransDic_path, 'r', encoding='utf-8-sig', newline='') as f:
+            TransDic_ToRead = csv.reader(f)
+        for row in TransDic_ToRead:
+            if len(row) < 2:
+                print(f"警告，值不足的行：{row}")
+                continue
+            key, value = row[0], row[1]
+            TransDic_data[key] = value
+    except Exception as e:
+        print(f"读取翻译字典文件失败: {e}")
+
+   
 
 # EN_tags to CN_tags
+
+
+combined_work = []  # combined_work 从 combined_list 获取一个组
+img_working = combined_work[0]
+txt_working = combined_work[1]
+json_working = combined_work[2]
+
+# 读取txt，从tags中删除不必要的标签
+txt_working = r'E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KIMT6M81GAYYH.info\005O0CJZly1gl7bm0ib57j30u01bwe81.txt'
+
+re_tags_ToDel_1 = r'(?:\d|\d_|multiple_)(?:girl|boy|girls|boys)'
+re_tags_ToDel_2 = r'\b\w+_(?:quality|background)\b'
+re_tags_ToDel_3 = r'solo|masterpiece|illustration'
+re_tags_ToDel_4 = r'^[\s,]+|[\s,]+$'
+
+try:
+    with open(txt_working, 'r', encoding='utf-8') as f:
+        txt_OriTags = f.read()
+        txt_CleanedTags = re.sub(re_tags_ToDel_1, '', txt_OriTags)
+        txt_CleanedTags = re.sub(re_tags_ToDel_2, '', txt_CleanedTags)
+        txt_CleanedTags = re.sub(re_tags_ToDel_3, '', txt_CleanedTags)
+        txt_CleanedTags = txt_CleanedTags.replace(' ,', '')
+        txt_CleanedTags = re.sub(re_tags_ToDel_4, '', txt_CleanedTags)
+
+        txt_Tags_list = [
+            tag.strip() 
+            for tag in txt_CleanedTags.split(', ') 
+            if tag.strip()
+        ]
+
+        print("调试信息，txt_OriTags：", txt_OriTags)
+        print("-"*50)
+        print("调试信息，txt_CleanedTags：", txt_CleanedTags)
+        print("-"*50)
+        print("调试信息，txt_Tags_list：", txt_Tags_list)
+
+except Exception as e:
+    print(f"读取{txt_working}文件失败: {e}")
+
+# 汉化tags
+
 # tag写入json
 # 处理进度条
 # 异常文件报错
@@ -204,7 +253,7 @@ for img_name in txt_list:
                     os._exit(0)
                 else:
                     # 格式化标签
-                    txt_tags = txt_tags.split(', ')
+                    
                     print("tags:",txt_tags)
 
             # 合并tags并更新JSON数据
