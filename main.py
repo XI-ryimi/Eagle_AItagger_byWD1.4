@@ -5,15 +5,7 @@ import csv
 import json
 from pathlib import Path
 
-def YorN(prompt):
-    while True:
-        user_input = input(prompt).strip().lower()
-        if user_input == 'y':
-            return True
-        elif user_input == 'n':
-            return False
-        else:
-            print('无效输入，请输入 Y 或 N 。')
+
 
 # 工作目录
 print('建议每次处理不超过1W张')
@@ -96,19 +88,7 @@ print(f'待处理{len(combined_list)}个图片')
 print("-"*50)
 
 
-# 多线程环境检测
-if YorN("是否启用多线程？几百张图片不用开启。(Y/N):"):
-    import multiprocessing
-    if multiprocessing.cpu_count() > 1:
-        print('CPU支持多线程')
-        print("-"*50)
-    else:
-        print('CPU不支持多线程。')
-        input('按回车键回到单线程')
-        print("-"*50)
-
-
-
+# 对单个文件的处理
 def TagsToJson(file):
     img_working = file[0]
     txt_working = file[1]
@@ -189,8 +169,20 @@ def TagsToJson(file):
         print(f'(json文件{json_working}解析错误: {e})')
         json_except_list.append(json_working)
 
-def process_files(file_list, use_multiprocessing):
-    if use_multiprocessing:
+
+# 判断器
+def YorN(prompt):
+    while True:
+        user_input = input(prompt).strip().lower()
+        if user_input == 'y':
+            return True
+        elif user_input == 'n':
+            return False
+        else:
+            print('无效输入，请输入 Y 或 N 。')
+            
+def process_files(file_list, use_multithread):
+    if use_multithread:
         # 使用多线程处理
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
             pool.map(TagsToJson, file_list)
@@ -199,18 +191,25 @@ def process_files(file_list, use_multiprocessing):
         for file in file_list:
             TagsToJson(file)
 
-# 使用示例
-file_list = ['file1.txt', 'file2.txt', 'file3.txt']
-use_multiprocessing = YorN("是否启用多线程？一千张以下的图片不用开启。(Y/N):")
-process_files(file_list, use_multiprocessing)
+
+# 多线程环境检测
+import multiprocessing
+if multiprocessing.cpu_count() > 1:
+    print('CPU支持多线程')
+    use_multithread = YorN("是否启用多线程？几百张图片不用开启。(Y/N):")
+else:
+    print('CPU不支持多线程，将使用单线程处理。')
+    use_multithread = False
+
+# 线程池
+process_files(combined_list, use_multithread)
 
 
 txt_except_list = []
 json_except_list = []
 
 if combined_list:
-    combined_work = combined_list[0]
-
+    1
 except_list = txt_except_list + json_except_list
 print('文件处理完成')
 print(f'({len(except_list)}：\n{except_list})')
