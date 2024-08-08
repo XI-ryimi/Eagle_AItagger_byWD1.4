@@ -1,9 +1,14 @@
 # Eagle_AItagger_byWD1.4
 
-基于WD1.4为Eagle开发的AI标签器
+**debug中**/**可能的计划：对秋叶lora训练器其他功能的裁剪**
 
-**开发中**/多线程tags汉化与写入
+基于[秋叶lora训练器](https://github.com/Akegarasu/lora-scripts)WD1.4前端为Eagle开发的AI标签器
 
+适用于大量图片的初次批量AI标记，或习惯囤积一堆图片后为图片分类的人
+
+如果只是有少量图片抓取到eagle中后立刻分类AI标记，可以看看[jtydhr88/eagle-ai-tagger: A custom plugin for Eagle to generate tags by local AI model (github.com)](https://github.com/jtydhr88/eagle-ai-tagger)这个项目
+
+### 代码使用
 
 下载秋叶的lora训练器
 

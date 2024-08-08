@@ -1,20 +1,86 @@
 import os
 import re
-import sys
 import csv
 import json
+import sys
+import multiprocessing
+import concurrent.futures
 from pathlib import Path
 
+# 对单个文件的处理
+def TagsToJson(file) -> None:
+    img_working, txt_working, json_working = file
+     
+    print(f'正在处理文件: {img_working}')
 
+    # 读取txt，从tags中删除不必要的标签
+    re_tags_ToDel_1 = r'(?:\d|\d_|multiple|multiple_)(?:girl|boy|girls|boys)'
+    re_tags_ToDel_2 = r'\b\w+_(?:quality|background)\b'
+    re_tags_ToDel_3 = r'solo|masterpiece|illustration'
+    re_tags_ToDel_4 = r'^[\s,]+|[\s,]+$'
+
+    try:
+        with txt_working.open(mode = 'r', encoding='utf-8') as f:
+            txt_OriTags = f.read()
+            txt_CleanedTags = re.sub(re_tags_ToDel_1, '', txt_OriTags)
+            txt_CleanedTags = re.sub(re_tags_ToDel_2, '', txt_CleanedTags)
+            txt_CleanedTags = re.sub(re_tags_ToDel_3, '', txt_CleanedTags)
+            txt_CleanedTags = txt_CleanedTags.replace(' ,', '')
+            txt_CleanedTags = re.sub(re_tags_ToDel_4, '', txt_CleanedTags)
+
+            txt_Tags_list = [
+                tag.strip() 
+                for tag in txt_CleanedTags.split(', ') 
+                if tag.strip()
+            ]
+
+            # 汉化tags
+            if TransIf is False:
+                txt_CNTags = txt_Tags_list
+            else:
+                txt_CNTags = [
+                    TransDic_data.get(tag, tag)
+                    for tag in txt_Tags_list 
+                ]
+    except Exception as e:
+        print(f'txt文件{txt_working}读取失败: {e}')
+        txt_except_list.append(txt_working)
+    
+    # tag写入json
+    try:
+        with json_working.open(mode = 'r', encoding='utf-8') as f:
+            json_working_data = json.load(f)
+            json_working_tags = json_working_data.get("tags",[])
+            new_tags = [
+                tag for tag in txt_CNTags 
+                if tag not in json_working_tags
+            ]
+            if new_tags:
+                json_working_tags.extend(new_tags)
+                json_working_data['tags'] = json_working_tags
+                with open(json_working, 'w', encoding='utf-8') as f:
+                    json.dump(json_working_data, f, ensure_ascii=False)
+            else:
+                print(f'{json_working}没有新tag需要写入')
+    except json.JSONDecodeError as e:
+        print(f'json文件{json_working}解析错误: {e}')
+        json_except_list.append(json_working)
+
+# 多线程 
 
 # 工作目录
-print('建议每次处理不超过1W张')
+print('每次处理不建议超过1W张，根据你的电脑性能自行决定要处理的图片数量')
 print('AI标记tags的前处理是否已完成？')
-print('粘贴从[Eagle]获取的图片路径')
-print("-"*50)
-'''
-while True:
+print(f'粘贴从[Eagle]获取的图片路径\n{"-"*50}')
 
+txt_except_list = []
+json_except_list = []
+TransDic_data = {}
+combined_list = []
+use_multithread: bool
+TransIf: bool
+
+while True:
     img_input_list = input()
     img_input_list = re.sub(r'([a-zA-Z]:\\)', r' \1',  img_input_list)
     img_input_list = re.sub(r'\s+([a-zA-Z]:\\)', r' \1',  img_input_list)
@@ -23,29 +89,17 @@ while True:
     if img_input_list.endswith(',,'):
         img_input_list = img_input_list[:-2]
         print('怎么会有人从秋叶训练器的文本框中复制带[,,]的路径？')
-        print('！！！路径已规格化！！！')
+        print('----------路径已规格化----------')
 
     re_work_dir = r'([a-zA-Z]:\\.*?\.library)\\.*?\.info\\'
     work_dir = re.search(re_work_dir, img_input_list)
     work_dir = work_dir.group(1)
 
     if work_dir.endswith('.library'):
-        print('Eagle资源库路径：', work_dir)
-        print("-"*50)
+        print(f'\n{"-"*50}Eagle资源库路径：{work_dir}\n{"-"*50}')
         break
 
     print('路径异常：', work_dir)
-'''    
-
-
-
-img_input_list = r'E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KIMT6M81GAYYH.info\005O0CJZly1gl7bm0ib57j30u01bwe81.png E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLAP6UB.info\tb_image_share_1594047317053.jpg E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLT4C8B.info\1594047078060.jpg'
-work_dir = r'E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library'
-print('Eagle资源库路径：', work_dir)
-print("-"*50)
-
-
-
 
 img_list = [
     Path(p.strip()) 
@@ -58,13 +112,13 @@ img_list_FatherPath = [
 ]
 
 txt_list = [
-    list(directory.glob('*.txt')) or None 
-    for directory in img_list_FatherPath
+    file for directory in img_list_FatherPath
+    for file in directory.glob('*.txt') or None
 ]
-
+print(txt_list)
 json_list = [
-    list(directory.glob('*.json')) or None 
-    for directory in img_list_FatherPath
+    file for directory in img_list_FatherPath
+    for file in directory.glob('*.json') or None
 ]
 
 combined_list = [
@@ -79,142 +133,77 @@ combined_list_DelGroups = [
 
 for item in combined_list_DelGroups: 
     print('txt或json文件缺失的图片文件路径：')
-    print(item[0])
-    print("-"*50)
+    print(f'{item[0]}\n{"-"*50}')
 
 # 从 combined_list 中删除包含 None 元素的组
-combined_list = [item for item in combined_list if None not in item]
-print(f'待处理{len(combined_list)}个图片')
-print("-"*50)
+combined_list = [
+    item for item in combined_list 
+    if None not in item
+]
 
+print(f'待处理{len(combined_list)}个图片\n{"-"*50}')
 
-# 对单个文件的处理
-def TagsToJson(file):
-    img_working = file[0]
-    txt_working = file[1]
-    json_working = file[2]
-     
-    print(f'(正在处理文件: {img_working})')
-    
-    # 汉化tags
-    if YorN("是否对tags进行汉化？(Y/N): "):
-        print('开始汉化tags...')
-        # 检查工作环境
-        script_dir = os.path.dirname(os.path.abspath(__file__)) # 当前脚本所在目录
-        TransDic_path = os.path.join(script_dir, 'Tags-zh.csv') # 翻译字典文件路径
-        TransDic_data = {}
-        try:
-            with open(TransDic_path, 'r', encoding='utf-8-sig') as f:
-                TransDic_ToRead = csv.reader(f)
-                for row in TransDic_ToRead:
-                    if len(row) < 2:
-                        print(f'(警告，值不足的行：{row})')
-                        continue
-                    key, value = row[0], row[1]
-                    TransDic_data[key] = value
-        except Exception as e:
-            print(f'(读取翻译字典文件失败: {e})')
-
-    # 读取txt，从tags中删除不必要的标签
-    txt_working = r'E:\GitHub\Eagle_AItagger_byWD1.4\Eagle_test.library\images\KKV8N0TLT4C8B.info\1594047078060.txt'
-
-    re_tags_ToDel_1 = r'(?:\d|\d_|multiple_)(?:girl|boy|girls|boys)'
-    re_tags_ToDel_2 = r'\b\w+_(?:quality|background)\b'
-    re_tags_ToDel_3 = r'solo|masterpiece|illustration'
-    re_tags_ToDel_4 = r'^[\s,]+|[\s,]+$'
-
-    try:
-        with open(txt_working, 'r', encoding='utf-8') as f:
-            txt_OriTags = f.read()
-            txt_CleanedTags = re.sub(re_tags_ToDel_1, '', txt_OriTags)
-            txt_CleanedTags = re.sub(re_tags_ToDel_2, '', txt_CleanedTags)
-            txt_CleanedTags = re.sub(re_tags_ToDel_3, '', txt_CleanedTags)
-            txt_CleanedTags = txt_CleanedTags.replace(' ,', '')
-            txt_CleanedTags = re.sub(re_tags_ToDel_4, '', txt_CleanedTags)
-
-            txt_Tags_list = [
-                tag.strip() 
-                for tag in txt_CleanedTags.split(', ') 
-                if tag.strip()
-            ]
-
-    except Exception as e:
-        print(f'(读取{txt_working}文件失败: {e})')
-        txt_except_list.append(txt_working)
-
-    # 汉化tags
-    txt_CNTags = [
-        TransDic_data.get(tag) 
-        for tag in txt_Tags_list 
-        if TransDic_data.get(tag) is not None
-    ]
-
-    # tag写入json
-    try:
-        with open(json_working, 'r', encoding='utf-8') as f:
-            json_working_data = json.load(f)
-            json_working_tags = json_working_data.get("tags",[])
-            new_tags = [
-                tag for tag in txt_CNTags 
-                if tag not in json_working_tags
-            ]
-            if new_tags:
-                json_working_tags.extend(new_tags)
-                json_working_data['tags'] = json_working_tags
-                with open(json_working, 'w', encoding='utf-8') as f:
-                    json.dumo(json_working_data, f, ensure_ascii=False)
-            else:
-                print(f'({json_working}没有新tag需要写入)')
-    except json.JSONDecodeError as e:
-        print(f'(json文件{json_working}解析错误: {e})')
-        json_except_list.append(json_working)
-
-
-# 判断器
-def YorN(prompt):
-    while True:
-        user_input = input(prompt).strip().lower()
-        if user_input == 'y':
-            return True
-        elif user_input == 'n':
-            return False
-        else:
-            print('无效输入，请输入 Y 或 N 。')
-            
-def process_files(file_list, use_multithread):
-    if use_multithread:
-        # 使用多线程处理
-        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-            pool.map(TagsToJson, file_list)
+# 汉化tags
+while True:
+    user_input = input("是否对tags进行汉化？(Y/N): ").strip().lower()
+    if user_input == 'y':
+        TransIf = True
+        break
+    elif user_input == 'n':
+        TransIf = False
+        break
     else:
-        # 使用单线程处理
-        for file in file_list:
-            TagsToJson(file)
+        print('无效输入，请输入 Y 或 N ')
 
+if TransIf is True:
+    # 检查工作环境
+    script_dir = os.path.dirname(os.path.abspath(__file__)) # 当前脚本所在目录
+    TransDic_path = os.path.join(script_dir, 'Tags-zh.csv') # 翻译字典文件路径
+    TransDic_data = {}
+    try:
+        with open(TransDic_path, 'r', encoding='utf-8-sig') as f:
+            TransDic_ToRead = csv.reader(f)
+            for row in TransDic_ToRead:
+                if len(row) < 2:
+                    print(f'警告，字典翻译缺失不足的行：{row}')
+                    continue
+                key, value = row[0], row[1]
+                TransDic_data[key] = value
+    except Exception as e:
+        print(f' 读取翻译字典文件失败: {e}')
+        input('按回车键退出')
+        sys.exit(0)
 
 # 多线程环境检测
-import multiprocessing
-if multiprocessing.cpu_count() > 1:
-    print('CPU支持多线程')
-    use_multithread = YorN("是否启用多线程？几百张图片不用开启。(Y/N):")
-else:
-    print('CPU不支持多线程，将使用单线程处理。')
+if multiprocessing.cpu_count() == 1:
+    print(f'CPU不支持多线程，将使用单线程处理\n{"-"*50}')
     use_multithread = False
+else:
+    print(f'CPU支持多线程\n{"-"*50}')
+    use_multithread = True
 
 # 线程池
-process_files(combined_list, use_multithread)
-
-
-txt_except_list = []
-json_except_list = []
-
+if use_multithread == False:
+    # 使用单线程处理
+    for file in combined_list:
+        TagsToJson(file)
+else:
+    num_cores = os.cpu_count()
+    executor_name = "MyThreadPool"
+    # 创建线程池，线程数量等于CPU核心数的两倍
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_cores * 2) as executor:
+        # 使用线程池提交任务
+        results = [executor.submit(TagsToJson, file) for file in combined_list]
+        concurrent.futures.wait(results)
 if combined_list:
-    1
-except_list = txt_except_list + json_except_list
-print('文件处理完成')
-print(f'({len(except_list)}：\n{except_list})')
-
-
-# 处理进度条
-# 异常文件报错
-
+    if txt_except_list or json_except_list:
+        except_list = txt_except_list + json_except_list
+        print(f'{len(except_list)}个异常文件：\n{except_list}')
+    print(f'文件处理完成\n{"-"*50}')
+# 删除所有txt文件
+for txt_file in txt_list:
+    try:
+        os.remove(txt_file)
+        print(f'已删除文件: {txt_file}')
+    except Exception as e:
+        print(f'删除文件失败 {txt_file}: {e}')
