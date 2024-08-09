@@ -105,30 +105,17 @@ img_list = [
     for p in img_input_list.split(" ")
 ]
 
-txt_list = [
-    path.with_suffix('.txt')
-    for path in img_list 
-    if path.with_suffix('.txt').exists()
-]
+# 获取父目录
+# 获取文件名
+# 拼接txt与json路径
+# 异常路径
+# 更新imglist
+txt_list = []
 
-json_list = [
-    path.with_suffix('.json_list')
-    for path in img_list 
-    if path.with_suffix('.json_list').exists()
-]
+json_list = []
 
-txt_except_list = [
-    path / (path.stem + '.txt') for path in img_list 
-    if not (path / (path.stem + '.txt')).exists()
-]
-
-json_except_list = [
-    path / (path.stem + '.json') for path in img_list 
-    if not (path / (path.stem + '.json')).exists()
-]
-
-# 更新 img_list
-img_list = [path for path in img_list if path not in txt_except_list and path not in json_except_list]
+txt_except_list = []
+json_except_list = []
 
 combined_list = list(zip(img_list, txt_list, json_list))
 
