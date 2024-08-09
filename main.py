@@ -182,7 +182,7 @@ if except_list:
     except_list = set(except_list)
     print(f'{"-"*50}\n{len(except_list)}个异常文件：\n{except_list}')
     
-print(f'{"-"*50}\n文件处理完成\n{"-"*50}')
+input(f'{"-"*50}\n文件处理完成\n{"-"*50}按回车退出')
 
 # 删除所有txt文件
 for txt_file in txt_list:
