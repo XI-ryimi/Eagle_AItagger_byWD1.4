@@ -88,8 +88,7 @@ while True:
 
     if img_input_list.endswith(',,'):
         img_input_list = img_input_list[:-2]
-        print('怎么会有人从秋叶训练器的文本框中复制带[,,]的路径？')
-        print('----------路径已规格化----------')
+        print('----------带[,,]的路径已规格化----------')
 
     re_work_dir = r'([a-zA-Z]:\\.*?\.library)\\.*?\.info\\'
     work_dir = re.search(re_work_dir, img_input_list)
@@ -106,41 +105,40 @@ img_list = [
     for p in img_input_list.split(" ")
 ]
 
-img_list_FatherPath = [
-    Path(path).parent 
-    for path in img_list
-]
-
 txt_list = [
-    file for directory in img_list_FatherPath
-    for file in directory.glob('*.txt') or None
+    path.with_suffix('.txt')
+    for path in img_list 
+    if path.with_suffix('.txt').exists()
 ]
-print(txt_list)
+
 json_list = [
-    file for directory in img_list_FatherPath
-    for file in directory.glob('*.json') or None
+    path.with_suffix('.json_list')
+    for path in img_list 
+    if path.with_suffix('.json_list').exists()
 ]
 
-combined_list = [
-    (img_path, txt_list[idx], json_list[idx])
-    for idx, img_path in enumerate(img_list)
+txt_except_list = [
+    path / (path.stem + '.txt') for path in img_list 
+    if not (path / (path.stem + '.txt')).exists()
 ]
 
-combined_list_DelGroups = [
-    item for item in combined_list 
-    if None in item
+json_except_list = [
+    path / (path.stem + '.json') for path in img_list 
+    if not (path / (path.stem + '.json')).exists()
 ]
 
-for item in combined_list_DelGroups: 
-    print('txt或json文件缺失的图片文件路径：')
-    print(f'{item[0]}\n{"-"*50}')
+# 更新 img_list
+img_list = [path for path in img_list if path not in txt_except_list and path not in json_except_list]
 
-# 从 combined_list 中删除包含 None 元素的组
-combined_list = [
-    item for item in combined_list 
-    if None not in item
-]
+combined_list = list(zip(img_list, txt_list, json_list))
 
+print(f'[调试：],txt_list:{txt_list}\n{"-"*50}')
+print(f'[调试：],txt_except_list:{txt_except_list}\n{"-"*50}')
+print(f'[调试：],combined_list:{combined_list}\n{"-"*50}')
+
+if not combined_list:
+    input('没有要处理的图片或txt全部异常')
+    sys.exit(0)
 print(f'待处理{len(combined_list)}个图片\n{"-"*50}')
 
 # 汉化tags
@@ -200,10 +198,10 @@ if combined_list:
         except_list = txt_except_list + json_except_list
         print(f'{len(except_list)}个异常文件：\n{except_list}')
     print(f'文件处理完成\n{"-"*50}')
-# 删除所有txt文件
-for txt_file in txt_list:
-    try:
-        os.remove(txt_file)
-        print(f'已删除文件: {txt_file}')
-    except Exception as e:
-        print(f'删除文件失败 {txt_file}: {e}')
+# # 删除所有txt文件
+# for txt_file in txt_list:
+#     try:
+#         os.remove(txt_file)
+#         print(f'已删除文件: {txt_file}')
+#     except Exception as e:
+#         print(f'删除文件失败 {txt_file}: {e}')
