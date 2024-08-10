@@ -105,14 +105,12 @@ while True:
         break
 
     print('路径异常：', work_dir)
-    
-print(f'【调试\img_input_list：】{img_input_list}')
 
 img_list = [
     Path(p.strip()) 
     for p in img_input_list.split("_,_,_")
 ]
-print(f'【调试\img_list：】{img_list}')
+
 txt_list = [
     path.with_suffix('.txt') 
     if path.with_suffix('.txt').exists() else None
