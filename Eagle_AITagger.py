@@ -6,6 +6,7 @@ import sys
 import multiprocessing
 import concurrent.futures
 from pathlib import Path
+import shlex
 
 # 对单个文件的处理
 def TagsToJson(file) -> None:
@@ -86,8 +87,9 @@ TransIf: bool
 
 while True:
     img_input_list = input()
-    img_input_list = re.sub(r'([a-zA-Z]:\\)', r' \1',  img_input_list)
-    img_input_list = re.sub(r'\s+([a-zA-Z]:\\)', r' \1',  img_input_list)
+    img_input_list = re.sub(r'([a-zA-Z]:\\)', r'_,_,_ \1',  img_input_list)
+    img_input_list = re.sub(r'_,_,_\s*([a-zA-Z]:\\)', r'_,_,_\1',  img_input_list)
+    img_input_list = re.sub(r'^_,_,_(.*)', r'\1',  img_input_list)
     img_input_list = img_input_list.strip()
 
     if img_input_list.endswith(',,'):
@@ -103,12 +105,14 @@ while True:
         break
 
     print('路径异常：', work_dir)
+    
+print(f'【调试\img_input_list：】{img_input_list}')
 
 img_list = [
     Path(p.strip()) 
-    for p in img_input_list.split(" ")
+    for p in img_input_list.split("_,_,_")
 ]
-
+print(f'【调试\img_list：】{img_list}')
 txt_list = [
     path.with_suffix('.txt') 
     if path.with_suffix('.txt').exists() else None
