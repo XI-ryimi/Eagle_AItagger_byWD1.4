@@ -22,6 +22,7 @@ class Interrogator:
     @staticmethod
     def postprocess_tags(
             tags: Dict[str, float],
+
             threshold=0.35,
             additional_tags: List[str] = [],
             exclude_tags: List[str] = [],
@@ -127,14 +128,14 @@ class WaifuDiffusionInterrogator(Interrogator):
         # only one of these packages should be installed at a time in any one environment
         # https://onnxruntime.ai/docs/get-started/with-python.html#install-onnx-runtime
         # TODO: remove old package when the environment changes?
-        from mikazuki.launch_utils import is_installed, run_pip
-        if not is_installed('onnxruntime'):
-            package = os.environ.get(
-                'ONNXRUNTIME_PACKAGE',
-                'onnxruntime-gpu'
-            )
+        # from mikazuki.launch_utils import is_installed, run_pip
+        # if not is_installed('onnxruntime'):
+        #     package = os.environ.get(
+        #         'ONNXRUNTIME_PACKAGE',
+        #         'onnxruntime-gpu'
+        #     )
 
-            run_pip(f'install {package}', 'onnxruntime')
+        #     run_pip(f'install {package}', 'onnxruntime')
 
         # Load torch to load cuda libs built in torch for onnxruntime, do not delete this.
         import torch
@@ -230,6 +231,14 @@ available_interrogators = {
         repo_id='SmilingWolf/wd-v1-4-moat-tagger-v2',
         revision='v2.0'
     ),
+    'wd-eva02-large-tagger-v3': WaifuDiffusionInterrogator(
+        'wd-eva02-large-tagger-v3',
+        repo_id='SmilingWolf/wd-eva02-large-tagger-v3',
+    ),
+    'wd-vit-large-tagger-v3': WaifuDiffusionInterrogator(
+        'wd-vit-large-tagger-v3',
+        repo_id='SmilingWolf/wd-vit-large-tagger-v3',
+    ),
 }
 
 
@@ -270,6 +279,7 @@ def on_interrogate(
         escape_tag
     )
 
+    # batch process
     batch_input_glob = batch_input_glob.strip()
     batch_output_dir = batch_output_dir.strip()
     batch_output_filename_format = batch_output_filename_format.strip()
@@ -288,20 +298,11 @@ def on_interrogate(
         base_dir = batch_input_glob.replace('?', '*')
         base_dir = base_dir.split(os.sep + '*').pop(0)
 
-        # PIL.Image.registered_extensions() returns only PNG if you call too early
-        supported_extensions = [
-            e
-            for e, f in Image.registered_extensions().items()
-            if f in Image.OPEN
-        ]
-
         # Handle paths based on the new approach if batch_input_glob ends with \n
         if batch_input_glob.endswith(',,\*'):
-            
             base_dir = re.search(r'([a-zA-Z]:/.*?\s)[a-zA-Z]:/', batch_input_glob)
             base_dir = base_dir.group(1)
             base_dir = Path(base_dir).parent.parent
-
             batch_input_glob = batch_input_glob.replace(',,\*', ',,')
             batch_input_glob = re.sub(r'\s([a-zA-Z]:/)', r',,\1', batch_input_glob)
             paths = [Path(p) for p in re.findall(r'([a-zA-Z]:/.*?),,', batch_input_glob)]
@@ -310,12 +311,19 @@ def on_interrogate(
             if not os.path.isdir(base_dir):
                 print('input path is not a directory / 输入的路径不是文件夹，终止识别')
                 return 'input path is not a directory'
-            
+
+            # this line is moved here because some reason
+            # PIL.Image.registered_extensions() returns only PNG if you call too early
+            supported_extensions = [
+                e
+                for e, f in Image.registered_extensions().items()
+                if f in Image.OPEN
+            ]
+
             paths = [
                 Path(p)
                 for p in glob(batch_input_glob, recursive=batch_input_recursive)
                 if '.' + p.split('.').pop().lower() in supported_extensions
-                and not p.rsplit('.', 1)[0].endswith('_thumbnail')
             ]
 
         print(f'found {len(paths)} image(s)')
@@ -331,8 +339,11 @@ def on_interrogate(
             # guess the output path
             base_dir_last = Path(base_dir).parts[-1]
             base_dir_last_idx = path.parts.index(base_dir_last)
-            output_dir = Path(batch_output_dir) if batch_output_dir else Path(base_dir)
-            output_dir = output_dir.joinpath(*path.parts[base_dir_last_idx + 1:]).parent
+            output_dir = Path(
+                batch_output_dir) if batch_output_dir else Path(base_dir)
+            output_dir = output_dir.joinpath(
+                *path.parts[base_dir_last_idx + 1:]).parent
+
             output_dir.mkdir(0o777, True, True)
 
             # format output filename
@@ -346,7 +357,9 @@ def on_interrogate(
             except (TypeError, ValueError) as error:
                 return str(error)
 
-            output_path = output_dir.joinpath(formatted_output_filename)
+            output_path = output_dir.joinpath(
+                formatted_output_filename
+            )
 
             output = []
 
@@ -358,10 +371,15 @@ def on_interrogate(
                     continue
 
             ratings, tags = interrogator.interrogate(image)
-            processed_tags = Interrogator.postprocess_tags(tags, *postprocess_opts)
+            processed_tags = Interrogator.postprocess_tags(
+                tags,
+                *postprocess_opts
+            )
 
             # TODO: switch for less print
-            print(f'found {len(processed_tags)} tags out of {len(tags)} from {path}')
+            print(
+                f'found {len(processed_tags)} tags out of {len(tags)} from {path}'
+            )
 
             plain_tags = ', '.join(processed_tags)
 
@@ -375,7 +393,9 @@ def on_interrogate(
             if batch_remove_duplicated_tag:
                 output_path.write_text(
                     ', '.join(
-                        OrderedDict.fromkeys(map(str.strip, ','.join(output).split(',')))
+                        OrderedDict.fromkeys(
+                            map(str.strip, ','.join(output).split(','))
+                        )
                     ),
                     encoding='utf-8'
                 )
